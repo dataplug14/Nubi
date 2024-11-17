@@ -1,10 +1,17 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
+import mongoose from 'mongoose';
 
-if (!process.env.DATABASE_URL) {
+if (!process.env.MONGODB_URI) {
   throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+    "MONGODB_URI must be set in the environment variables",
   );
 }
 
-export const db = drizzle({ connection: process.env.DATABASE_URL, schema });
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Export mongoose instance for use in other files
+export const db = mongoose;
+
+// Export models from schema
+export * from './schema';

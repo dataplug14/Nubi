@@ -4,6 +4,7 @@ import { setupAuth } from "./auth";
 import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
 import cors from "cors";
+import { db } from "../db";
 
 const app = express();
 app.use(cors({
@@ -14,37 +15,46 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 (async () => {
-  const server = createServer(app);
-  
-  // Setup Auth0 authentication
-  setupAuth(app);
-  
-  // Register API routes
-  registerRoutes(app, server);
+  try {
+    // Wait for MongoDB connection
+    await db.connection.asPromise();
+    console.log('Connected to MongoDB successfully');
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    console.error(err);
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+    const server = createServer(app);
+    
+    // Setup Auth0 authentication
+    setupAuth(app);
+    
+    // Register API routes
+    registerRoutes(app, server);
 
-    res.status(status).json({ message });
-  });
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error(err);
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
 
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    const formattedTime = new Date().toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
+      res.status(status).json({ message });
     });
 
-    console.log(`${formattedTime} [express] serving on port ${PORT}`);
-  });
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      const formattedTime = new Date().toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+
+      console.log(`${formattedTime} [express] serving on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error('Failed to connect to MongoDB:', error);
+    process.exit(1);
+  }
 })();
