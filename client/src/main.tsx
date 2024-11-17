@@ -25,6 +25,7 @@ if (!domain || !clientId || !audience) {
       audience: audience ? "✓" : "✗",
     }
   );
+  throw new Error("Missing Auth0 configuration");
 }
 
 const redirect_uri = window.location.origin;
@@ -38,7 +39,10 @@ createRoot(document.getElementById("root")!).render(
         authorizationParams={{
           redirect_uri,
           audience,
+          scope: "openid profile email",
         }}
+        cacheLocation="localstorage"
+        useRefreshTokens={true}
         onRedirectCallback={(appState) => {
           window.history.replaceState(
             {},
@@ -47,7 +51,12 @@ createRoot(document.getElementById("root")!).render(
           );
         }}
       >
-        <SWRConfig value={{ fetcher }}>
+        <SWRConfig 
+          value={{ 
+            fetcher,
+            shouldRetryOnError: false
+          }}
+        >
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/admin" component={Admin} />

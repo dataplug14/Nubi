@@ -10,18 +10,51 @@ export function setupWebSocket(server: Server) {
   });
 
   const clients = new Map<WebSocket, Set<string>>();
+  const jwtCheck = auth({
+    audience: process.env.AUTH0_AUDIENCE,
+    issuerBaseURL: process.env.AUTH0_DOMAIN,
+    tokenSigningAlg: "RS256"
+  });
 
   server.on('upgrade', async (request, socket, head) => {
-    const { pathname } = parse(request.url || '');
+    const { pathname, query } = parse(request.url || '', true);
     
     if (pathname !== '/ws') {
       socket.destroy();
       return;
     }
 
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
+    try {
+      // Get token from query parameter
+      const token = query.token as string;
+      if (!token) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
+
+      // Add authorization header for JWT verification
+      request.headers.authorization = `Bearer ${token}`;
+
+      // Verify JWT token
+      await new Promise((resolve, reject) => {
+        jwtCheck(request as any, {} as any, (err) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(true);
+          }
+        });
+      });
+
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    } catch (error) {
+      console.error('WebSocket authentication error:', error);
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+    }
   });
 
   wss.on("connection", (ws) => {
