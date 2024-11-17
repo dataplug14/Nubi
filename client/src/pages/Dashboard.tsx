@@ -4,7 +4,6 @@ import { PaymentDialog } from "@/components/PaymentDialog";
 import { VMCard } from "@/components/VMCard";
 import { useVMs } from "@/hooks/use-vm";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -14,42 +13,7 @@ export default function Dashboard() {
   const { vms, isLoading: vmsLoading, error: vmsError } = useVMs();
   const { toast } = useToast();
 
-  // Handle authentication errors
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: "Authentication Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  }, [error, toast]);
-
-  // Handle VM loading errors
-  useEffect(() => {
-    if (vmsError) {
-      toast({
-        title: "Error Loading VMs",
-        description: "Failed to load virtual machines",
-        variant: "destructive",
-      });
-    }
-  }, [vmsError, toast]);
-
-  // Show loading state while checking auth
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
-
-  // Only redirect if not authenticated and not in the process of authenticating
-  if (!isAuthenticated && !window.location.search.includes('code=')) {
-    loginWithRedirect({
-      appState: { returnTo: window.location.pathname }
-    });
-    return null;
-  }
-
-  // Get a fresh access token silently
+  // 1. Token refresh effect
   useEffect(() => {
     if (isAuthenticated) {
       getAccessTokenSilently().catch((error) => {
@@ -61,6 +25,41 @@ export default function Dashboard() {
       });
     }
   }, [isAuthenticated, getAccessTokenSilently, toast]);
+
+  // 2. Authentication error handling
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Authentication Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  // 3. VM loading error handling
+  useEffect(() => {
+    if (vmsError) {
+      toast({
+        title: "Error Loading VMs",
+        description: "Failed to load virtual machines",
+        variant: "destructive",
+      });
+    }
+  }, [vmsError, toast]);
+
+  // Loading state
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  // Authentication check
+  if (!isAuthenticated && !window.location.search.includes('code=')) {
+    loginWithRedirect({
+      appState: { returnTo: window.location.pathname }
+    });
+    return null;
+  }
 
   return (
     <div className="container mx-auto p-4">
