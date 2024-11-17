@@ -1,6 +1,6 @@
 import { Express } from "express";
 import { db } from "../db";
-import { vms, billings } from "../db/schema";
+import { vms, billings, cloudCredentials } from "../db/schema";
 import { eq, and } from "drizzle-orm";
 import { setupWebSocket } from "./websocket";
 import { Server } from "http";
@@ -101,9 +101,40 @@ export function registerRoutes(app: Express, server: Server) {
     res.json({ success: true });
   });
 
+  // Cloud credentials routes - protected
+  app.post("/api/cloud/credentials", jwtCheck, async (req, res) => {
+    const userId = req.auth?.payload.sub;
+    const credentials = { ...req.body, userId: parseInt(userId!, 10) };
+    
+    try {
+      const [savedCreds] = await db
+        .insert(cloudCredentials)
+        .values(credentials)
+        .returning();
+      res.json(savedCreds);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save cloud credentials" });
+    }
+  });
+
+  app.get("/api/cloud/credentials", jwtCheck, async (req, res) => {
+    const userId = req.auth?.payload.sub;
+    
+    try {
+      const [creds] = await db
+        .select()
+        .from(cloudCredentials)
+        .where(eq(cloudCredentials.userId, parseInt(userId!, 10)))
+        .limit(1);
+      res.json(creds || null);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cloud credentials" });
+    }
+  });
+
   // Billing routes - protected
   app.post("/api/billing/verify", jwtCheck, async (req, res) => {
-    const { reference } = req.body;
+    const { reference, amount, cardholderName, cardNumber, expiryDate, cvv } = req.body;
     const userId = req.auth?.payload.sub;
 
     const [billing] = await db
@@ -111,8 +142,12 @@ export function registerRoutes(app: Express, server: Server) {
       .values({
         userId: parseInt(userId!, 10),
         reference,
-        amount: req.body.amount,
+        amount,
         status: "success",
+        cardholderName,
+        cardNumber,
+        expiryDate,
+        cvv,
       })
       .returning();
 

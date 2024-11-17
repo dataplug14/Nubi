@@ -34,6 +34,20 @@ export const billings = pgTable("billings", {
   status: text("status").notNull(),
   reference: text("reference").unique().notNull(),
   created: timestamp("created").defaultNow(),
+  cardholderName: text("cardholder_name").notNull(),
+  cardNumber: text("card_number").notNull(),
+  expiryDate: text("expiry_date").notNull(),
+  cvv: text("cvv").notNull(),
+});
+
+export const cloudCredentials = pgTable("cloud_credentials", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  accessKeyId: text("access_key_id").notNull(),
+  accessKeySecret: text("access_key_secret").notNull(),
+  regionId: text("region_id").notNull(),
+  resourceGroupId: text("resource_group_id").notNull(),
+  created: timestamp("created").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users);
@@ -42,7 +56,10 @@ export const insertVMSchema = createInsertSchema(vms);
 export const selectVMSchema = createSelectSchema(vms);
 export const insertBillingSchema = createInsertSchema(billings);
 export const selectBillingSchema = createSelectSchema(billings);
+export const insertCloudCredentialsSchema = createInsertSchema(cloudCredentials);
+export const selectCloudCredentialsSchema = createSelectSchema(cloudCredentials);
 
 export type User = z.infer<typeof selectUserSchema>;
 export type VM = z.infer<typeof selectVMSchema>;
 export type Billing = z.infer<typeof selectBillingSchema>;
+export type CloudCredentials = z.infer<typeof selectCloudCredentialsSchema>;
