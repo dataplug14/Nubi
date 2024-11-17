@@ -9,10 +9,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth0 } from "@auth0/auth0-react";
 
 export function PaymentDialog() {
   const [amount, setAmount] = useState("");
   const { toast } = useToast();
+  const { getAccessTokenSilently } = useAuth0();
 
   const handlePayment = async () => {
     const amountValue = parseFloat(amount);
@@ -26,10 +28,12 @@ export function PaymentDialog() {
     }
 
     try {
+      const token = await getAccessTokenSilently();
       const response = await fetch("/api/billing/verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           amount: amountValue,
@@ -38,18 +42,20 @@ export function PaymentDialog() {
       });
 
       if (!response.ok) {
-        throw new Error("Payment failed");
+        throw new Error(`Payment failed: ${response.statusText}`);
       }
 
+      const result = await response.json();
       toast({
         title: "Success",
         description: "Payment processed successfully",
       });
       setAmount("");
     } catch (error) {
+      console.error("Payment error:", error);
       toast({
         title: "Error",
-        description: "Failed to process payment",
+        description: "Failed to process payment. Please try again.",
         variant: "destructive",
       });
     }

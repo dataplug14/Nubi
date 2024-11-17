@@ -18,10 +18,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { useVMs } from "@/hooks/use-vm";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth0 } from "@auth0/auth0-react";
 
 export function CreateVMDialog() {
   const { createVM } = useVMs();
   const { toast } = useToast();
+  const { getAccessTokenSilently } = useAuth0();
   const form = useForm({
     defaultValues: {
       name: "",
@@ -33,12 +35,36 @@ export function CreateVMDialog() {
   });
 
   const onSubmit = async (data: any) => {
-    const success = await createVM(data);
-    toast({
-      title: success ? "Success" : "Error",
-      description: success ? "VM created successfully" : "Failed to create VM",
-      variant: success ? "default" : "destructive",
-    });
+    try {
+      const token = await getAccessTokenSilently();
+      const response = await fetch("/api/vms", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to create VM: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      toast({
+        title: "Success",
+        description: "VM created successfully",
+      });
+      return true;
+    } catch (error) {
+      console.error("VM creation error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create VM. Please try again.",
+        variant: "destructive",
+      });
+      return false;
+    }
   };
 
   return (
